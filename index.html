@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GTA 5 車輛與摩托車改裝部位生成器</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 850px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .container {
+            background-color: #2d2d2d;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            text-align: center;
+            color: #61dafb;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            color: #9cdcfe;
+        }
+        .fieldset {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .description {
+            margin: 5px 0 10px;
+            color: #999;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        select, input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            background-color: #3c3c3c;
+            color: #d4d4d4;
+            border: 1px solid #555;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #1177bb;
+        }
+        .output {
+            margin-top: 20px;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #d7ba7d;
+            overflow-x: auto;
+        }
+        .output span.tag {
+            color: #569cd6;
+        }
+        .output span.attribute {
+            color: #9cdcfe;
+        }
+        .output span.value {
+            color: #ce9178;
+        }
+        .xml-tag {
+            font-family: 'Consolas', 'Courier New', monospace;
+            color: #569cd6;
+            background-color: #1e1e1e;
+            padding: 0 3px;
+            border-radius: 3px;
+        }
+        .help-toggle {
+            cursor: pointer;
+            color: #61dafb;
+            text-decoration: underline;
+            font-size: 0.9em;
+            margin-left: 5px;
+        }
+        #tagExplanations {
+            margin-top: 20px;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .explanation {
+            margin-bottom: 10px;
+        }
+        .explanation .tag-name {
+            font-weight: bold;
+            color: #569cd6;
+        }
+        .vehicle-type-switch {
+            display: flex;
+            margin-bottom: 20px;
+            background-color: #1e1e1e;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .vehicle-type-switch button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background-color: #333;
+            color: #d4d4d4;
+            cursor: pointer;
+            margin: 0;
+            transition: 0.3s;
+        }
+        .vehicle-type-switch button.active {
+            background-color: #0e639c;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GTA 5 車輛與摩托車改裝部位生成器</h1>
+        <div style="text-align: right; margin: -10px 0 15px;"><span class="help-toggle" id="showHelp">顯示XML標籤說明</span></div>
+        
+        <div class="vehicle-type-switch">
+            <button id="carType" class="active">汽車模式</button>
+            <button id="bikeType">摩托車模式</button>
+        </div>
+        
+        <div id="tagExplanations">
+            <h3>XML標籤說明</h3>
+            <div class="explanation">
+                <div class="tag-name">&lt;modelName&gt;</div>
+                <p>模型的內部名稱。這是遊戲用來識別和載入特定改裝部件的唯一標識符。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;modShopLabel&gt;</div>
+                <p>改裝商店顯示的標籤名稱。通常與modelName相同，但有時會有所不同以便在改裝商店的UI中更易讀。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;linkedModels /&gt;</div>
+                <p>與此改裝部件相關聯的其他模型。如果此部件需要同時加載其他模型，則會在此處列出。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;turnOffBones&gt;</div>
+                <p>安裝此改裝部件時需要禁用的骨骼列表。這通常用於防止原始部件與新部件重疊。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;type&gt;</div>
+                <p>改裝部件的類型。定義了該部件在車輛改裝類別中的位置（例如：尾翼、保險桿等）。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;bone&gt;</div>
+                <p>此改裝部件附著的車輛骨骼。決定了部件在車輛上的位置和移動方式。摩托車有特殊的骨骼，例如搖臂(swingarm)。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;collisionBone&gt;</div>
+                <p>用於碰撞檢測的骨骼。控制改裝部件如何與遊戲世界中的其他物體進行物理交互。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;cameraPos&gt;</div>
+                <p>在改裝商店中查看此部件時相機的位置。VMCP_DEFAULT表示使用默認視角。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;audioApply&gt;</div>
+                <p>音效應用值。影響部件對車輛聲音的改變程度（例如不同排氣管的聲音）。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;weight&gt;</div>
+                <p>部件的重量值。可能影響車輛的物理特性和性能。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;turnOffExtra&gt;</div>
+                <p>是否關閉車輛的額外視覺組件。可用於在安裝特定改裝時隱藏某些原始車輛部件。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;disableBonnetCamera&gt;</div>
+                <p>是否禁用引擎蓋相機視角。某些改裝可能會阻礙或改變引擎蓋相機的功能。</p>
+            </div>
+            <div class="explanation">
+                <div class="tag-name">&lt;allowBonnetSlide&gt;</div>
+                <p>是否允許引擎蓋滑動動畫。影響引擎蓋打開和關閉時的視覺效果。</p>
+            </div>
+        </div>
+        
+        <div class="fieldset">
+            <label for="modelName">
+                <span class="xml-tag">&lt;modelName&gt;</span> 模型名稱:
+            </label>
+            <div class="description">模型的內部識別名稱（例如：agtr35_wing_1）</div>
+            <input type="text" id="modelName" placeholder="例如: agtr35_wing_1">
+        </div>
+        
+        <div class="fieldset">
+            <label for="partType">
+                <span class="xml-tag">&lt;type&gt;</span> 部位類型:
+            </label>
+            <div class="description">定義了改裝部件的類別，決定其在改裝商店中的分類</div>
+            <select id="partTypecar" class="vehicle-specific car-option">
+                <option value="VMT_SPOILER">VMT_SPOILER (尾翼)</option>
+                <option value="VMT_BUMPER_F">VMT_BUMPER_F (前保險桿)</option>
+                <option value="VMT_BUMPER_R">VMT_BUMPER_R (後保險桿)</option>
+                <option value="VMT_CHASSIS">VMT_CHASSIS (底盤擴展)</option>
+                <option value="VMT_HOOD">VMT_HOOD (引擎蓋)</option>
+                <option value="VMT_ROOF">VMT_ROOF (車頂)</option>
+                <option value="VMT_ENGINE">VMT_ENGINE (引擎)</option>
+                <option value="VMT_BRAKES">VMT_BRAKES (剎車)</option>
+                <option value="VMT_TRANSMISSION">VMT_TRANSMISSION (變速箱)</option>
+                <option value="VMT_HORNS">VMT_HORNS (喇叭)</option>
+                <option value="VMT_SUSPENSION">VMT_SUSPENSION (懸掛)</option>
+                <option value="VMT_ARMOUR">VMT_ARMOUR (裝甲)</option>
+                <option value="VMT_SKIRT">VMT_SKIRT (側裙)</option>
+                <option value="VMT_EXHAUST">VMT_EXHAUST (排氣管)</option>
+                <option value="VMT_LIVERY">VMT_LIVERY (車身彩繪)</option>
+            </select>
+            <select id="partTypebike" class="vehicle-specific bike-option" style="display: none;">
+                <option value="VMT_CHASSIS">VMT_CHASSIS (車架)</option>
+                <option value="VMT_FENDER_F">VMT_FENDER_F (前擋泥板)</option>
+                <option value="VMT_FENDER_R">VMT_FENDER_R (後擋泥板)</option>
+                <option value="VMT_EXHAUST">VMT_EXHAUST (排氣管)</option>
+                <option value="VMT_FUEL_TANK">VMT_FUEL_TANK (油箱)</option>
+                <option value="VMT_SEAT">VMT_SEAT (座椅)</option>
+                <option value="VMT_ENGINE">VMT_ENGINE (引擎)</option>
+                <option value="VMT_BRAKES">VMT_BRAKES (剎車)</option>
+                <option value="VMT_TRANSMISSION">VMT_TRANSMISSION (變速箱)</option>
+                <option value="VMT_SUSPENSION">VMT_SUSPENSION (懸掛)</option>
+                <option value="VMT_LIVERY">VMT_LIVERY (車身彩繪)</option>
+                <option value="VMT_FRAME">VMT_FRAME (車架裝飾)</option>
+                <option value="VMT_HANDLEBARS">VMT_HANDLEBARS (車把)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="bone">
+                <span class="xml-tag">&lt;bone&gt;</span> 附著骨骼:
+            </label>
+            <div class="description">定義改裝部件連接到車輛哪個部位的骨骼</div>
+            <select id="bonecar" class="vehicle-specific car-option">
+                <option value="boot">boot (行李箱)</option>
+                <option value="chassis">chassis (底盤)</option>
+                <option value="wheel_lf">wheel_lf (左前輪)</option>
+                <option value="wheel_rf">wheel_rf (右前輪)</option>
+                <option value="wheel_lr">wheel_lr (左後輪)</option>
+                <option value="wheel_rr">wheel_rr (右後輪)</option>
+                <option value="exhaust">exhaust (排氣管)</option>
+                <option value="bonnet">bonnet (引擎蓋)</option>
+                <option value="door_dside_f">door_dside_f (駕駛側前門)</option>
+                <option value="door_pside_f">door_pside_f (乘客側前門)</option>
+            </select>
+            <select id="bonebike" class="vehicle-specific bike-option" style="display: none;">
+                <option value="swingarm">swingarm (搖臂/後懸架)</option>
+                <option value="chassis">chassis (底盤/車架)</option>
+                <option value="forks_u">forks_u (上前叉)</option>
+                <option value="forks_l">forks_l (下前叉)</option>
+                <option value="wheel_f">wheel_f (前輪)</option>
+                <option value="wheel_r">wheel_r (後輪)</option>
+                <option value="handlebar">handlebar (車把)</option>
+                <option value="tank">tank (油箱)</option>
+                <option value="seat">seat (座椅)</option>
+                <option value="exhaust">exhaust (排氣管)</option>
+                <option value="frame">frame (車架)</option>
+                <option value="engine">engine (引擎)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="collisionBone">
+                <span class="xml-tag">&lt;collisionBone&gt;</span> 碰撞骨骼:
+            </label>
+            <div class="description">定義改裝部件的物理碰撞屬性與哪個骨骼相關聯</div>
+            <select id="collisionBonecar" class="vehicle-specific car-option">
+                <option value="mod_col_1">mod_col_1 (改裝碰撞骨骼1)</option>
+                <option value="chassis">chassis (底盤)</option>
+                <option value="boot">boot (行李箱)</option>
+                <option value="bonnet">bonnet (引擎蓋)</option>
+            </select>
+            <select id="collisionBonebike" class="vehicle-specific bike-option" style="display: none;">
+                <option value="mod_col_1">mod_col_1 (改裝碰撞骨骼1)</option>
+                <option value="chassis">chassis (底盤/車架)</option>
+                <option value="swingarm">swingarm (搖臂)</option>
+                <option value="tank">tank (油箱)</option>
+                <option value="frame">frame (車架)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="turnOffBone">
+                <span class="xml-tag">&lt;turnOffBones&gt;</span> 需關閉的骨骼:
+            </label>
+            <div class="description">安裝此改裝部件時需要禁用的原始車輛骨骼</div>
+            <select id="turnOffBonecar" class="vehicle-specific car-option">
+                <option value="misc_e">misc_e (雜項E)</option>
+                <option value="misc_c">misc_c (雜項C)</option>
+                <option value="misc_b">misc_b (雜項B)</option>
+                <option value="misc_a">misc_a (雜項A)</option>
+                <option value="misc_d">misc_d (雜項D)</option>
+            </select>
+            <select id="turnOffBonebike" class="vehicle-specific bike-option" style="display: none;">
+                <option value="misc_a">misc_a (雜項A)</option>
+                <option value="misc_b">misc_b (雜項B)</option>
+                <option value="misc_c">misc_c (雜項C)</option>
+                <option value="misc_d">misc_d (雜項D)</option>
+                <option value="misc_e">misc_e (雜項E)</option>
+                <option value="misc_f">misc_f (雜項F)</option>
+                <option value="stock_seat">stock_seat (原廠座椅)</option>
+                <option value="stock_tank">stock_tank (原廠油箱)</option>
+                <option value="stock_exhaust">stock_exhaust (原廠排氣管)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="weight">
+                <span class="xml-tag">&lt;weight&gt;</span> 重量:
+            </label>
+            <div class="description">改裝部件的重量值，可能影響車輛的物理屬性</div>
+            <input type="number" id="weight" value="0">
+        </div>
+        
+        <div class="fieldset">
+            <label for="audioApply">
+                <span class="xml-tag">&lt;audioApply&gt;</span> 音效應用值:
+            </label>
+            <div class="description">控制改裝部件對車輛聲音的影響程度</div>
+            <input type="text" id="audioApply" value="1.000000">
+        </div>
+        
+        <div class="fieldset">
+            <label for="allowBonnetSlide">
+                <span class="xml-tag">&lt;allowBonnetSlide&gt;</span> 允許引擎蓋滑動:
+            </label>
+            <div class="description">是否允許引擎蓋打開關閉的動畫效果</div>
+            <select id="allowBonnetSlide">
+                <option value="true">true (是)</option>
+                <option value="false">false (否)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="disableBonnetCamera">
+                <span class="xml-tag">&lt;disableBonnetCamera&gt;</span> 禁用引擎蓋相機:
+            </label>
+            <div class="description">是否禁用與引擎蓋相關的相機視角</div>
+            <select id="disableBonnetCamera">
+                <option value="false">false (否)</option>
+                <option value="true">true (是)</option>
+            </select>
+        </div>
+        
+        <div class="fieldset">
+            <label for="turnOffExtra">
+                <span class="xml-tag">&lt;turnOffExtra&gt;</span> 關閉額外部件:
+            </label>
+            <div class="description">是否關閉車輛上的額外視覺組件</div>
+            <select id="turnOffExtra">
+                <option value="false">false (否)</option>
+                <option value="true">true (是)</option>
+            </select>
+        </div>
+        
+        <button id="generate">生成 XML 代碼</button>
+        
+        <div class="output" id="output"></div>
+    </div>
+
+    <script>
+        // 車輛類型切換
+        let vehicleType = 'car';
+        document.getElementById('carType').addEventListener('click', function() {
+            vehicleType = 'car';
+            document.getElementById('carType').classList.add('active');
+            document.getElementById('bikeType').classList.remove('active');
+            document.querySelectorAll('.car-option').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.bike-option').forEach(el => el.style.display = 'none');
+        });
+        
+        document.getElementById('bikeType').addEventListener('click', function() {
+            vehicleType = 'bike';
+            document.getElementById('bikeType').classList.add('active');
+            document.getElementById('carType').classList.remove('active');
+            document.querySelectorAll('.bike-option').forEach(el => el.style.display = 'block');
+            document.querySelectorAll('.car-option').forEach(el => el.style.display = 'none');
+        });
+    
+        document.getElementById('showHelp').addEventListener('click', function() {
+            const helpSection = document.getElementById('tagExplanations');
+            if (helpSection.style.display === 'none' || helpSection.style.display === '') {
+                helpSection.style.display = 'block';
+                this.textContent = '隱藏XML標籤說明';
+            } else {
+                helpSection.style.display = 'none';
+                this.textContent = '顯示XML標籤說明';
+            }
+        });
+        
+        document.getElementById('generate').addEventListener('click', function() {
+            const modelName = document.getElementById('modelName').value || 'part_name_1';
+            const partType = document.getElementById('partType' + vehicleType).value;
+            const bone = document.getElementById('bone' + vehicleType).value;
+            const collisionBone = document.getElementById('collisionBone' + vehicleType).value;
+            const turnOffBone = document.getElementById('turnOffBone' + vehicleType).value;
+            const weight = document.getElementById('weight').value;
+            const audioApply = document.getElementById('audioApply').value;
+            const allowBonnetSlide = document.getElementById('allowBonnetSlide').value;
+            const disableBonnetCamera = document.getElementById('disableBonnetCamera').value;
+            const turnOffExtra = document.getElementById('turnOffExtra').value;
+            
+            let xml = 
+`<Item>
+  <modelName>${modelName}</modelName>
+  <modShopLabel>${modelName}</modShopLabel>
+  <linkedModels />
+  <turnOffBones>
+    <Item>${turnOffBone}</Item>
+  </turnOffBones>
+  <type>${partType}</type>
+  <bone>${bone}</bone>
+  <collisionBone>${collisionBone}</collisionBone>
+  <cameraPos>VMCP_DEFAULT</cameraPos>
+  <audioApply value="${audioApply}" />
+  <weight value="${weight}" />
+  <turnOffExtra value="${turnOffExtra}" />
+  <disableBonnetCamera value="${disableBonnetCamera}" />
+  <allowBonnetSlide value="${allowBonnetSlide}" />
+</Item>`;
+            
+            const output = document.getElementById('output');
+            output.textContent = xml;
+            
+            // 為XML代碼添加語法高亮
+            let highlighted = xml
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/(".*?")/g, "<span class='value'>$1</span>");
+                
+            highlighted = highlighted
+                .replace(/&lt;(\/?[a-zA-Z0-9_]+)&gt;/g, "&lt;<span class='tag'>$1</span>&gt;")
+                .replace(/&lt;([a-zA-Z0-9_]+)( value=)/g, "&lt;<span class='tag'>$1</span><span class='attribute'>$2</span>");
+                
+            output.innerHTML = highlighted;
+        });
+    </script>
+</body>
+</html>
